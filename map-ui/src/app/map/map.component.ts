@@ -67,7 +67,7 @@ export class MapComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    const sizeFactor = getSizeFactor(environment.tileServer.tileSize);
+    const sizeFactor = getSizeFactor(environment.tileSize);
     const map = new L.Map(this.mapContainer.nativeElement, {
       center: initialState.coords,
       zoom: initialState.zoom,
@@ -75,12 +75,12 @@ export class MapComponent implements OnInit, AfterViewInit {
     });
 
     L.control.scale({ maxWidth: 300, imperial: false, position: 'bottomright' }).addTo(map);
-    const OpenStreetMap = new L.TileLayer(`${environment.tileServer.uri}/{z}/{x}/{y}.png`, {
+    const OpenStreetMap = new L.TileLayer(`${environment.tileServer}/{z}/{x}/{y}.png`, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
       maxNativeZoom: 19,
       minZoom: sizeFactor,
-      tileSize: environment.tileServer.tileSize,
+      tileSize: environment.tileSize,
       zoomOffset: -sizeFactor,
       updateWhenIdle: true,
     });
