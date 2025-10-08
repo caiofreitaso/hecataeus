@@ -1,4 +1,4 @@
-const host = '192.168.0.57';
+const host = '192.168.0.123';
 
 export const environment = {
   tileServer: `http://${host}/hot`,

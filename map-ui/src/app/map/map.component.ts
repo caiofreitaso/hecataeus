@@ -64,6 +64,7 @@ export class MapComponent implements OnInit, AfterViewInit {
         map(favs => favs.map(f => CreateMarker(f.way.coordinates as [number, number], MarkerType.Favorite, f.name)))
       )
       .subscribe(favs => (this._favorites = favs));
+    this._favorites = [CreateMarker(initialState.coords, MarkerType.Favorite, 'Casa')];
   }
 
   ngAfterViewInit(): void {
