@@ -3,7 +3,7 @@ import * as L from 'leaflet';
 import { map, take } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { FavoriteService } from '../services/favorite/favorite.service';
-import { MapState, MarkerClass, MarkerSvg, MarkerType } from './map.model';
+import { Dictionary, MapState, MarkerClass, MarkerSvg, MarkerType } from './map.model';
 
 const BASE_ICON_URI = 'https://raw.githubusercontent.com/gravitystorm/openstreetmap-carto/refs/heads/master/symbols/';
 const initialState: MapState = {
@@ -47,12 +47,17 @@ function CreateMarker(latlng: L.LatLngExpression, type: MarkerType, name: string
   encapsulation: ViewEncapsulation.None,
 })
 export class MapComponent implements OnInit, AfterViewInit {
-  private map!: L.Map;
-
   @ViewChild('map')
   private mapContainer!: ElementRef<HTMLElement>;
 
-  private _favorites: L.Marker[] = [];
+  private readonly overlays: Dictionary<L.LayerGroup> = {
+    'Favorites': new L.LayerGroup([], { attribution: 'Powered by k10forgotten' }),
+    'Amenities': new L.LayerGroup([]),
+    'Shops': new L.LayerGroup([]),
+    'Tourism': new L.LayerGroup([]),
+  };
+  private currentMarker: L.Marker = new L.Marker([0, 0]);
+  private readonly ClickIcon: L.Icon = new L.Icon({ iconUrl: '/marker.png', iconSize: [18, 22] });
 
   // eslint-disable-next-line no-unused-vars
   constructor(private readonly fav: FavoriteService) { }
@@ -61,10 +66,13 @@ export class MapComponent implements OnInit, AfterViewInit {
     this.fav.getAll()
       .pipe(
         take(1),
-        map(favs => favs.map(f => CreateMarker(f.way.coordinates as [number, number], MarkerType.Favorite, f.name)))
+        map(favs => favs.map(f => CreateMarker(f.coords, MarkerType.Favorite, f.name)))
       )
-      .subscribe(favs => (this._favorites = favs));
-    this._favorites = [CreateMarker(initialState.coords, MarkerType.Favorite, 'Casa')];
+      .subscribe(favorites => {
+        for (const point of favorites) {
+          point.addTo(this.overlays['Favorites']);
+        }
+      });
   }
 
   ngAfterViewInit(): void {
@@ -74,8 +82,6 @@ export class MapComponent implements OnInit, AfterViewInit {
       zoom: initialState.zoom,
       maxBounds: [[-180, -180], [180, 180]],
     });
-
-    L.control.scale({ maxWidth: 300, imperial: false, position: 'bottomright' }).addTo(map);
     const OpenStreetMap = new L.TileLayer(`${environment.tileServer}/{z}/{x}/{y}.png`, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
@@ -85,12 +91,22 @@ export class MapComponent implements OnInit, AfterViewInit {
       zoomOffset: -sizeFactor,
       updateWhenIdle: true,
     });
-    const overlays = {
-      'Favorites': new L.LayerGroup(this._favorites, { attribution: 'Powered by k10forgotten' }),
-      'Amenities': new L.LayerGroup([]),
-      'Shops': new L.LayerGroup([]),
-      'Tourism': new L.LayerGroup([]),
-    };
-    L.control.layers({ OpenStreetMap }, overlays, { collapsed: false, position: 'bottomleft' }).addTo(map);
+
+    L.control.scale({ maxWidth: 300, imperial: false, position: 'bottomright' }).addTo(map);
+    L.control.layers({ OpenStreetMap }, this.overlays, { collapsed: false, position: 'bottomleft' }).addTo(map);
+
+    map.on('click', event => {
+      this.currentMarker?.removeFrom(map);
+      this.currentMarker = new L.Marker(event.latlng, { icon: this.ClickIcon })
+        .bindTooltip(`${event.latlng.lat}, ${event.latlng.lng}`)
+        .bindPopup(new L.Popup({ closeButton: true, content: 'Copy coordinates', }))
+        .addTo(map);
+      this.currentMarker.toggleTooltip();
+    })
+    // const ZoomHandler = L.Handler.extend({
+    //   addHooks: () => L.DomEvent.on
+    // });
   }
 }
+
+//16,20
