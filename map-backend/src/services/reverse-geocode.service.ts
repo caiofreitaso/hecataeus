@@ -27,7 +27,7 @@ FROM (
     FROM planet_osm_line
     WHERE
         (name IS NOT NULL OR ref IS NOT NULL)
-        AND route IS NULL
+        AND highway IS NOT NULL
     UNION ALL
     SELECT
         COALESCE(name, ref) AS name,

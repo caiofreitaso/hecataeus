@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { latLng, LatLngExpression } from 'leaflet';
-import { map, Observable } from 'rxjs';
+import { map, Observable, shareReplay, take } from 'rxjs';
 
 export interface Favorite {
   name: string;
@@ -23,15 +23,21 @@ export class BackendService {
 
   getFavorites(): Observable<Favorite[]> {
     return this.http.get<{ favorites: Favorite[] }>('http://localhost:8080/favorites')
-      .pipe(map(favs => favs.favorites));
+      .pipe(
+        take(1),
+        map(favs => favs.favorites),
+        shareReplay(1),
+      );
   }
 
   getAddress(coords: LatLngExpression): Observable<string> {
     const { lat, lng } = latLng(coords);
     return this.http.get<{ address: Address }>('http://localhost:8080/address?coords=' + lat + '&coords=' + lng)
       .pipe(
+        take(1),
         map(addr => addr.address),
-        map(addr => `${addr.street}, ${addr.area}<br />${addr.city}/${addr.state}`)
+        map(addr => `${addr.street}, ${addr.area}<br />${addr.city}/${addr.state}`),
+        shareReplay(1),
       );
   }
 }

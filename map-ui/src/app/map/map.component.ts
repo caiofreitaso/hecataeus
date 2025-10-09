@@ -25,20 +25,6 @@ function getSizeFactor(tileSize: number): number {
   return 0;
 }
 
-function CreateMarker(latlng: L.LatLngExpression, type: MarkerType, name: string): L.Marker {
-  return new L.Marker(latlng, {
-    alt: name,
-    title: name,
-    icon: L.icon({
-      iconUrl: BASE_ICON_URI + MarkerSvg[type],
-      iconSize: [12, 12],
-      iconAnchor: [11, 11],
-      className: `icon icon-${MarkerClass[type]}`
-    })
-  })
-    .bindTooltip(name, { permanent: true, className: `label label-${MarkerClass[type]}` });
-}
-
 @Component({
   selector: 'app-map',
   imports: [],
@@ -47,6 +33,7 @@ function CreateMarker(latlng: L.LatLngExpression, type: MarkerType, name: string
   encapsulation: ViewEncapsulation.None,
 })
 export class MapComponent implements OnInit, AfterViewInit {
+
   @ViewChild('map')
   private mapContainer!: ElementRef<HTMLElement>;
 
@@ -56,6 +43,7 @@ export class MapComponent implements OnInit, AfterViewInit {
     'Shops': new L.LayerGroup([]),
     'Tourism': new L.LayerGroup([]),
   };
+  private map: L.Map | undefined = undefined;
   private currentMarker: L.Marker = new L.Marker([0, 0]);
   private readonly ClickIcon: L.Icon = new L.Icon({
     iconUrl: '/marker.png',
@@ -71,7 +59,7 @@ export class MapComponent implements OnInit, AfterViewInit {
     this.backend.getFavorites()
       .pipe(
         take(1),
-        map(favs => favs.map(f => CreateMarker(f.coords, MarkerType.Favorite, f.name)))
+        map(favs => favs.map(f => this.createMarker(f.coords, MarkerType.Favorite, f.name)))
       )
       .subscribe(favorites => {
         for (const point of favorites) {
@@ -82,7 +70,7 @@ export class MapComponent implements OnInit, AfterViewInit {
 
   ngAfterViewInit(): void {
     const sizeFactor = getSizeFactor(environment.tileSize);
-    const map = new L.Map(this.mapContainer.nativeElement, {
+    this.map = new L.Map(this.mapContainer.nativeElement, {
       center: initialState.coords,
       zoom: initialState.zoom,
       maxBounds: [[-180, -180], [180, 180]],
@@ -97,24 +85,56 @@ export class MapComponent implements OnInit, AfterViewInit {
       updateWhenIdle: true,
     });
 
-    L.control.scale({ maxWidth: 300, imperial: false, position: 'bottomright' }).addTo(map);
-    L.control.layers({ OpenStreetMap }, this.overlays, { collapsed: false, position: 'bottomleft' }).addTo(map);
+    L.control.scale({ maxWidth: 300, imperial: false, position: 'bottomright' }).addTo(this.map);
+    L.control.layers({ OpenStreetMap }, this.overlays, { collapsed: false, position: 'bottomleft' }).addTo(this.map);
 
-    map.on('click', event => {
-      this.currentMarker?.removeFrom(map);
+    this.map.on('click', event => {
+      this.currentMarker?.removeFrom(this.map!);
       this.currentMarker = new L.Marker(event.latlng, { icon: this.ClickIcon })
         .bindTooltip(`${event.latlng.lat}, ${event.latlng.lng}`)
-        .addTo(map);
-      this.backend.getAddress(event.latlng).subscribe(address => {
-        const { lat, lng } = event.latlng;
-        const popup = new L.Popup({ closeButton: true, content: `${lng} ${lat}<br />${address}` });
-        this.currentMarker.bindPopup(popup).togglePopup();
-      })
-      this.currentMarker.toggleTooltip();
-    })
+        .on('dblclick', () => this.currentMarker.removeFrom(this.map!))
+        .addTo(this.map!);
+      this.createAddressPopup(this.currentMarker, event, true);
+    });
     // const ZoomHandler = L.Handler.extend({
     //   addHooks: () => L.DomEvent.on
     // });
+  }
+
+  createMarker(latlng: L.LatLngExpression, type: MarkerType, name: string): L.Marker {
+    const marker = new L.Marker(latlng, {
+      alt: name,
+      title: name,
+      icon: L.icon({
+        iconUrl: BASE_ICON_URI + MarkerSvg[type],
+        iconSize: [12, 12],
+        iconAnchor: [11, 11],
+        className: `icon icon-${MarkerClass[type]}`
+      }),
+
+    })
+      .bindTooltip(name, { permanent: true, className: `label label-${MarkerClass[type]}` });
+    marker.on('click', event => {
+      const popup = marker.getPopup();
+      if (!popup) {
+        this.createAddressPopup(marker, event);
+      }
+    });
+    return marker;
+  }
+
+  createAddressPopup(marker: L.Marker, event: L.LeafletMouseEvent, setTooltip: boolean = false): void {
+    this.backend.getAddress(event.latlng).subscribe(address => {
+      const { lat, lng } = event.latlng;
+      const popup = new L.Popup({
+        closeButton: true,
+        content: `${lng.toFixed(7)}, ${lat.toFixed(7)}<br />${address}`
+      });
+      marker.bindPopup(popup).togglePopup();
+      if (setTooltip) {
+        marker.getTooltip()?.setContent(address);
+      }
+    });
   }
 }
 
