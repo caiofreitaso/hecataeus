@@ -2,7 +2,7 @@ import { AfterViewInit, Component, ElementRef, OnInit, ViewChild, ViewEncapsulat
 import * as L from 'leaflet';
 import { map, take } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { FavoriteService } from '../services/favorite/favorite.service';
+import { BackendService } from '../services/backend/backend.service';
 import { Dictionary, MapState, MarkerClass, MarkerSvg, MarkerType } from './map.model';
 
 const BASE_ICON_URI = 'https://raw.githubusercontent.com/gravitystorm/openstreetmap-carto/refs/heads/master/symbols/';
@@ -57,13 +57,18 @@ export class MapComponent implements OnInit, AfterViewInit {
     'Tourism': new L.LayerGroup([]),
   };
   private currentMarker: L.Marker = new L.Marker([0, 0]);
-  private readonly ClickIcon: L.Icon = new L.Icon({ iconUrl: '/marker.png', iconSize: [18, 22] });
+  private readonly ClickIcon: L.Icon = new L.Icon({
+    iconUrl: '/marker.png',
+    iconSize: [30, 36],
+    iconAnchor: [15, 36],
+    popupAnchor: [0, -20],
+  });
 
   // eslint-disable-next-line no-unused-vars
-  constructor(private readonly fav: FavoriteService) { }
+  constructor(private readonly backend: BackendService) { }
 
   ngOnInit(): void {
-    this.fav.getAll()
+    this.backend.getFavorites()
       .pipe(
         take(1),
         map(favs => favs.map(f => CreateMarker(f.coords, MarkerType.Favorite, f.name)))
@@ -99,8 +104,12 @@ export class MapComponent implements OnInit, AfterViewInit {
       this.currentMarker?.removeFrom(map);
       this.currentMarker = new L.Marker(event.latlng, { icon: this.ClickIcon })
         .bindTooltip(`${event.latlng.lat}, ${event.latlng.lng}`)
-        .bindPopup(new L.Popup({ closeButton: true, content: 'Copy coordinates', }))
         .addTo(map);
+      this.backend.getAddress(event.latlng).subscribe(address => {
+        const { lat, lng } = event.latlng;
+        const popup = new L.Popup({ closeButton: true, content: `${lng} ${lat}<br />${address}` });
+        this.currentMarker.bindPopup(popup).togglePopup();
+      })
       this.currentMarker.toggleTooltip();
     })
     // const ZoomHandler = L.Handler.extend({
