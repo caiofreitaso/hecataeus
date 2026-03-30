@@ -46,7 +46,7 @@ WHERE
     name IS NOT NULL
     AND boundary = 'administrative'
     AND admin_level = '10'
-ORDER BY ST_Distance(way, ST_Transform(?::geometry, 3857)) ASC
+    AND ST_Contains(way, ST_Transform(?::geometry, 3857))
 LIMIT 1`, options),
             this.db.query<{ name: string }>(`
 SELECT name
@@ -55,7 +55,7 @@ WHERE
     name IS NOT NULL
     AND boundary = 'administrative'
     AND admin_level = '8'
-ORDER BY ST_Distance(way, ST_Transform(?::geometry, 3857)) ASC
+    AND ST_Contains(way, ST_Transform(?::geometry, 3857))
 LIMIT 1`, options),
             this.db.query<{ name: string }>(`
 SELECT
@@ -65,14 +65,14 @@ WHERE
     name IS NOT NULL
     AND boundary = 'administrative'
     AND admin_level = '4'
-ORDER BY ST_Distance(way, ST_Transform(?::geometry, 3857)) ASC
+    AND ST_Contains(way, ST_Transform(?::geometry, 3857))
 LIMIT 1`, options),
         ]).then(([street, area, city, state]) => {
             return ({
-                street: street[0].name,
-                area: area[0].name,
-                city: city[0].name,
-                state: state[0].name,
+                street: street[0]?.name,
+                area: area[0]?.name,
+                city: city[0]?.name,
+                state: state[0]?.name,
             })
         });
     }

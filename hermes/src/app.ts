@@ -24,7 +24,6 @@ app.use(express.json());
 app.get('/favorites', async (req, res) => favorites.get(req, res));
 app.options('/favorites', (req, res) => favorites.options(req, res));
 
-
 app.get('/address', async (req, res) => reverseGeocode.get(req, res));
 app.options('/address', (req, res) => reverseGeocode.options(req, res));
 

@@ -70,11 +70,6 @@ export class MapComponent implements OnInit, AfterViewInit {
 
   ngAfterViewInit(): void {
     const sizeFactor = getSizeFactor(environment.tileSize);
-    this.map = new L.Map(this.mapContainer.nativeElement, {
-      center: initialState.coords,
-      zoom: initialState.zoom,
-      maxBounds: [[-180, -180], [180, 180]],
-    });
     const OpenStreetMap = new L.TileLayer(`${environment.tileServer}/{z}/{x}/{y}.png`, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
@@ -85,8 +80,31 @@ export class MapComponent implements OnInit, AfterViewInit {
       updateWhenIdle: true,
     });
 
-    L.control.scale({ maxWidth: 300, imperial: false, position: 'bottomright' }).addTo(this.map);
-    L.control.layers({ OpenStreetMap }, this.overlays, { collapsed: false, position: 'bottomleft' }).addTo(this.map);
+    this.map = new L.Map(this.mapContainer.nativeElement, {
+      center: initialState.coords,
+      zoom: initialState.zoom,
+      maxBounds: [[-180, -180], [180, 180]],
+      layers: [OpenStreetMap],
+    });
+
+    new L.Control.Scale({ maxWidth: 300, imperial: false, position: 'bottomright' }).addTo(this.map);
+    new L.Control.Layers({ OpenStreetMap }, this.overlays, { collapsed: false, position: 'bottomleft' })
+      .addTo(this.map);
+
+    if (navigator?.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const currentGeolocation: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        const icon = new L.Icon({
+          iconUrl: '/current.png',
+          iconSize: [30, 36],
+          iconAnchor: [15, 36],
+          popupAnchor: [0, -20],
+        });
+
+        const current = new L.Marker(currentGeolocation, { icon }).addTo(this.map!);
+        console.log(current);
+      });
+    }
 
     this.map.on('click', event => {
       this.currentMarker?.removeFrom(this.map!);
